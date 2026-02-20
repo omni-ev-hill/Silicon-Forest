@@ -1,2 +1,649 @@
-# Silicon-Forest
-Silicon Forest: After Dark RSVP
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Silicon Forest: After Dark — RSVP</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#030b14;--cyan:#00e5ff;--elec:#0ff0c0;
+  --line:rgba(0,229,255,0.18);--white:#e8f8ff;
+  --muted:rgba(200,240,255,0.55);--wall:#061420;
+}
+html,body{min-height:100vh;background:var(--bg);font-family:'Rajdhani',sans-serif;color:var(--white);overflow-x:hidden}
+input,textarea,button{font-family:inherit}
+input::placeholder,textarea::placeholder{color:rgba(0,229,255,0.28)}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(0,229,255,0.2)}
+.grid-bg{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(0,229,255,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,0.05) 1px,transparent 1px);background-size:40px 40px}
+.screen{display:none;min-height:100vh;position:relative}
+.screen.active{display:flex;flex-direction:column}
+.orb{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:0}
+.field{margin-bottom:14px}
+.field-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--cyan);letter-spacing:0.22em;text-transform:uppercase;margin-bottom:7px;display:block}
+.field-wrap{position:relative}
+.field-wrap input{width:100%;padding:14px 18px;background:rgba(0,229,255,0.04);border:1px solid var(--line);color:var(--white);font-family:'Orbitron',sans-serif;font-size:15px;letter-spacing:0.08em;outline:none;transition:border-color 0.2s}
+.field-wrap input:focus{border-color:var(--cyan)}
+.field-wrap .underline{position:absolute;bottom:-1px;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:0;transition:opacity 0.2s}
+.field-wrap input:focus+.underline{opacity:1}
+.btn-primary{padding:15px 20px;width:100%;background:rgba(0,229,255,0.1);border:1px solid var(--cyan);color:var(--elec);font-family:'Orbitron',sans-serif;font-size:14px;font-weight:700;letter-spacing:0.15em;cursor:pointer;transition:all 0.2s;text-transform:uppercase}
+.btn-primary:disabled{opacity:0.4;cursor:default;background:transparent;border-color:var(--line);color:var(--muted)}
+.btn-primary:not(:disabled):hover{background:rgba(0,229,255,0.18);box-shadow:0 0 20px rgba(0,229,255,0.2)}
+.btn-confirm{padding:14px 44px;background:rgba(0,229,255,0.12);border:2px solid var(--cyan);color:var(--elec);font-family:'Orbitron',sans-serif;font-size:14px;font-weight:700;letter-spacing:0.18em;cursor:pointer;box-shadow:0 0 24px rgba(0,229,255,0.25);transition:all 0.2s}
+.btn-confirm:hover{background:rgba(0,229,255,0.22);box-shadow:0 0 36px rgba(0,229,255,0.4)}
+.btn-secondary{padding:13px 16px;background:transparent;border:1px solid var(--line);color:var(--muted);font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:0.15em;cursor:pointer}
+.mono{font-family:'Share Tech Mono',monospace}
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--cyan),transparent)}
+.confirm-status{display:inline-block;padding:14px 44px;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:0.2em;margin-bottom:6px}
+.confirm-status.sent{border:1px solid var(--elec);background:rgba(15,240,192,0.08);color:var(--elec)}
+.confirm-status.error{border:1px solid #ff4466;background:rgba(255,68,102,0.08);color:#ff4466}
+.confirm-status.sending{border:1px solid var(--line);color:var(--cyan)}
+
+/* ENTRY */
+#screen-entry{align-items:center;justify-content:center;overflow:hidden}
+.entry-card{position:relative;z-index:2;width:100%;max-width:460px;padding:0 28px;text-align:center}
+.entry-title{font-family:'Orbitron',sans-serif;font-size:58px;font-weight:900;line-height:0.88;letter-spacing:0.04em;margin-bottom:14px;background:linear-gradient(135deg,#fff 0%,var(--cyan) 50%,var(--elec) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.entry-err{font-family:'Share Tech Mono',monospace;font-size:9px;color:#ff4466;letter-spacing:0.15em;margin-bottom:12px;display:none;text-align:center}
+
+/* ROOM */
+#screen-room{align-items:center}
+.room-topbar{position:relative;z-index:2;width:100%;border-bottom:1px solid var(--line);background:rgba(0,229,255,0.03);padding:13px 32px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.room-wrap{position:relative;z-index:2;margin:14px auto 0;width:min(98vw,820px)}
+.room-box{width:100%;padding-bottom:65%;position:relative;background:var(--wall);border:1px solid var(--line);overflow:hidden}
+.room-back-wall{position:absolute;top:0;left:0;right:0;height:44%;background:linear-gradient(180deg,#040f1a 0%,#061520 100%);border-bottom:1px solid var(--line)}
+.room-floor{position:absolute;bottom:0;left:0;right:0;height:56%;background:linear-gradient(180deg,#061a28 0%,#030e18 100%)}
+.ceiling-light{position:absolute;top:0;display:flex;flex-direction:column;align-items:center;transform:translateX(-50%)}
+.ceiling-cord{width:2px;height:20%;background:linear-gradient(var(--elec),transparent)}
+.ceiling-bulb{width:28px;height:5px;border-radius:3px;background:rgba(0,240,192,0.28);border:1px solid var(--elec);box-shadow:0 0 18px 4px rgba(0,240,192,0.28)}
+.wall-text{position:absolute;top:4%;left:50%;transform:translateX(-50%);font-family:'Orbitron',sans-serif;font-weight:700;color:rgba(0,229,255,0.35);letter-spacing:0.3em;white-space:nowrap;font-size:clamp(6px,1.1vw,13px)}
+.room-el{position:absolute}
+.guest-list-wrap{position:relative;z-index:2;width:min(98vw,820px);margin:12px auto 0;border:1px solid var(--line);background:rgba(0,229,255,0.02);padding:12px 18px}
+.guest-chip{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:0.08em;padding:3px 8px;border:1px solid var(--line);color:var(--muted);background:transparent}
+.guest-chip.me{color:var(--elec);border-color:var(--elec);background:rgba(15,240,192,0.08)}
+.room-footer{position:relative;z-index:2;font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:0.12em;padding:14px 0 24px;text-align:center;cursor:default;user-select:none;width:100%}
+
+/* ADMIN */
+#screen-admin-login{align-items:center;justify-content:center;overflow:hidden}
+.admin-login-card{position:relative;z-index:2;width:100%;max-width:360px;padding:0 28px;text-align:center}
+.admin-login-err{font-family:'Share Tech Mono',monospace;font-size:9px;color:#ff4466;letter-spacing:0.15em;margin-bottom:12px;display:none}
+#screen-admin{padding:36px 24px;align-items:center}
+.admin-inner{position:relative;z-index:2;width:100%;max-width:600px}
+.admin-stat{border:1px solid var(--line);padding:16px 20px;background:rgba(0,229,255,0.03);position:relative}
+.admin-stat::before{content:'';position:absolute;top:0;left:0;width:24px;height:2px;background:var(--cyan)}
+.admin-box{border:1px solid var(--line);padding:16px 18px;margin-bottom:22px;background:rgba(0,229,255,0.02)}
+.admin-list{display:flex;flex-direction:column;gap:7px;max-height:200px;overflow-y:auto}
+.admin-list-row{display:flex;justify-content:space-between;font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:0.08em;border-bottom:1px solid rgba(0,229,255,0.1);padding-bottom:6px}
+.admin-textarea{width:100%;height:110px;padding:12px 16px;background:rgba(0,229,255,0.04);border:1px solid var(--line);color:var(--white);font-family:'Rajdhani',sans-serif;font-size:14px;outline:none;resize:vertical}
+.admin-results{border:1px solid var(--elec);padding:16px 18px;background:rgba(15,240,192,0.05)}
+
+/* LOADING SCREEN */
+#screen-loading{align-items:center;justify-content:center}
+
+@keyframes nf{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes w0{0%,100%{transform:translate(0,0)}25%{transform:translate(4px,-3px)}75%{transform:translate(-3px,2px)}}
+@keyframes w1{0%,100%{transform:translate(0,0)}33%{transform:translate(-4px,-2px)}66%{transform:translate(3px,3px)}}
+@keyframes w2{0%,100%{transform:translate(0,0)}40%{transform:translate(5px,2px)}80%{transform:translate(-2px,-3px)}}
+@keyframes w3{0%,100%{transform:translate(0,0)}25%{transform:translate(-3px,4px)}75%{transform:translate(4px,-2px)}}
+@keyframes popIn{0%{transform:translateX(-50%) scale(0) rotate(-15deg);opacity:0}70%{transform:translateX(-50%) scale(1.15);opacity:1}100%{transform:translateX(-50%) scale(1);opacity:1}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+@keyframes barPulse{0%,100%{opacity:0.7}50%{opacity:0.2}}
+@media(max-width:600px){.entry-title{font-size:42px}.btn-confirm{padding:12px 24px;font-size:12px}}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+
+<!-- LOADING -->
+<div id="screen-loading" class="screen active">
+  <div style="text-align:center">
+    <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:#00e5ff;letter-spacing:0.3em;animation:pulse 1.2s ease-in-out infinite">LOADING ROOM...</div>
+  </div>
+</div>
+
+<!-- ENTRY -->
+<div id="screen-entry" class="screen">
+  <div class="orb" style="width:500px;height:500px;background:radial-gradient(circle,rgba(0,229,255,0.18) 0%,transparent 70%);top:-150px;left:-150px"></div>
+  <div class="orb" style="width:400px;height:400px;background:radial-gradient(circle,rgba(0,240,192,0.13) 0%,transparent 70%);bottom:-100px;right:-100px"></div>
+  <div class="entry-card">
+    <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--cyan);letter-spacing:0.28em;margin-bottom:10px">STEM SOCIAL × STEAM CIRCUIT</div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:14px;font-weight:700;color:var(--white);letter-spacing:0.18em;margin-bottom:4px">SILICON FOREST:</div>
+    <div class="entry-title">AFTER<br/>DARK</div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:0.16em;margin-bottom:6px">MAR 14, 2026  //  6–9 PM  //  PORSCHE STUDIO PDX</div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--elec);letter-spacing:0.14em;margin-bottom:28px" id="entry-count">— PEOPLE ALREADY IN THE ROOM</div>
+    <div class="divider" style="margin-bottom:26px"></div>
+    <div style="text-align:left">
+      <div class="field">
+        <label class="field-label">// YOUR NAME</label>
+        <div class="field-wrap"><input type="text" id="entry-name" placeholder="FULL NAME" autocomplete="off"/><div class="underline"></div></div>
+      </div>
+      <div class="field">
+        <label class="field-label">// YOUR EMAIL</label>
+        <div class="field-wrap"><input type="email" id="entry-email" placeholder="EMAIL ADDRESS"/><div class="underline"></div></div>
+      </div>
+    </div>
+    <div class="entry-err" id="entry-err"></div>
+    <button class="btn-primary" id="entry-btn" disabled onclick="handleEnter()">
+      <span id="entry-btn-text">ENTER THE ROOM →</span>
+    </button>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:0.1em;margin-top:12px">Returning? Enter the same name &amp; email to re-enter the room</div>
+  </div>
+</div>
+
+<!-- ROOM -->
+<div id="screen-room" class="screen">
+  <div class="orb" style="width:600px;height:600px;background:radial-gradient(circle,rgba(0,229,255,0.12) 0%,transparent 70%);top:-200px;left:-200px;filter:blur(100px)"></div>
+  <div class="room-topbar">
+    <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--cyan);letter-spacing:0.18em">SILICON FOREST: AFTER DARK  //  PORSCHE STUDIO</div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--elec);letter-spacing:0.14em" id="room-count">— ATTENDING</div>
+  </div>
+  <div style="position:relative;z-index:2;width:100%;max-width:820px;padding:18px 24px 0;text-align:center">
+    <div style="font-family:'Orbitron',sans-serif;font-size:13px;color:var(--white);letter-spacing:0.1em;margin-bottom:4px">YOU'RE IN, <span style="color:var(--elec)" id="room-myname"></span> 🎉</div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:0.15em;margin-bottom:18px">MAR 14  //  6–9 PM  //  1432 NW JOHNSON ST, PORTLAND</div>
+    <div id="confirm-area" style="margin-bottom:6px;text-align:center">
+      <button class="btn-confirm" onclick="handleConfirm()">✉  CONFIRM MY RSVP</button>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:0.1em;margin-top:6px" id="confirm-hint"></div>
+    </div>
+  </div>
+
+  <!-- THE ROOM -->
+  <div class="room-wrap">
+    <div class="room-box" id="room-box">
+      <div class="room-back-wall"></div>
+      <div class="room-floor"></div>
+      <!-- Floor lines -->
+      <div style="position:absolute;bottom:11.2%;left:0;right:0;height:1px;background:rgba(0,229,255,0.07)"></div>
+      <div style="position:absolute;bottom:22.4%;left:0;right:0;height:1px;background:rgba(0,229,255,0.06)"></div>
+      <div style="position:absolute;bottom:33.6%;left:0;right:0;height:1px;background:rgba(0,229,255,0.05)"></div>
+      <div style="position:absolute;bottom:44.8%;left:0;right:0;height:1px;background:rgba(0,229,255,0.04)"></div>
+      <div style="position:absolute;bottom:0;top:44%;left:calc(50% - 35%);width:1px;background:rgba(0,229,255,0.04)"></div>
+      <div style="position:absolute;bottom:0;top:44%;left:calc(50% - 25%);width:1px;background:rgba(0,229,255,0.04)"></div>
+      <div style="position:absolute;bottom:0;top:44%;left:calc(50% - 15%);width:1px;background:rgba(0,229,255,0.04)"></div>
+      <div style="position:absolute;bottom:0;top:44%;left:calc(50% - 5%);width:1px;background:rgba(0,229,255,0.04)"></div>
+      <div style="position:absolute;bottom:0;top:44%;left:calc(50% + 5%);width:1px;background:rgba(0,229,255,0.04)"></div>
+      <div style="position:absolute;bottom:0;top:44%;left:calc(50% + 15%);width:1px;background:rgba(0,229,255,0.04)"></div>
+      <div style="position:absolute;bottom:0;top:44%;left:calc(50% + 25%);width:1px;background:rgba(0,229,255,0.04)"></div>
+      <div style="position:absolute;bottom:0;top:44%;left:calc(50% + 35%);width:1px;background:rgba(0,229,255,0.04)"></div>
+      <!-- Ceiling lights -->
+      <div class="ceiling-light" style="left:18%"><div class="ceiling-cord"></div><div class="ceiling-bulb"></div></div>
+      <div class="ceiling-light" style="left:36%"><div class="ceiling-cord"></div><div class="ceiling-bulb"></div></div>
+      <div class="ceiling-light" style="left:54%"><div class="ceiling-cord"></div><div class="ceiling-bulb"></div></div>
+      <div class="ceiling-light" style="left:72%"><div class="ceiling-cord"></div><div class="ceiling-bulb"></div></div>
+      <div class="ceiling-light" style="left:88%"><div class="ceiling-cord"></div><div class="ceiling-bulb"></div></div>
+      <div class="wall-text">SILICON FOREST: AFTER DARK</div>
+      <!-- Speakers -->
+      <div class="room-el" style="top:6%;left:3%">
+        <svg width="20" height="46" viewBox="0 0 20 46" fill="none"><rect x="2" y="2" width="16" height="42" rx="2" fill="#061e2e" stroke="#00e5ff" stroke-width="1"/><circle cx="10" cy="14" r="5" fill="rgba(0,229,255,0.13)" stroke="#00e5ff" stroke-width="1"/><circle cx="10" cy="14" r="2.5" fill="rgba(0,229,255,0.25)"/><circle cx="10" cy="27" r="3.5" fill="rgba(0,229,255,0.13)" stroke="#00e5ff" stroke-width="1"/><circle cx="10" cy="27" r="1.5" fill="rgba(0,229,255,0.25)"/><rect x="6" y="36" width="8" height="3" rx="1" fill="#0ff0c0" opacity="0.6"><animate attributeName="opacity" values="0.6;0.1;0.6" dur="0.7s" repeatCount="indefinite"/></rect></svg>
+      </div>
+      <div class="room-el" style="top:6%;right:3%">
+        <svg width="20" height="46" viewBox="0 0 20 46" fill="none"><rect x="2" y="2" width="16" height="42" rx="2" fill="#061e2e" stroke="#00e5ff" stroke-width="1"/><circle cx="10" cy="14" r="5" fill="rgba(0,229,255,0.13)" stroke="#00e5ff" stroke-width="1"/><circle cx="10" cy="14" r="2.5" fill="rgba(0,229,255,0.25)"/><circle cx="10" cy="27" r="3.5" fill="rgba(0,229,255,0.13)" stroke="#00e5ff" stroke-width="1"/><circle cx="10" cy="27" r="1.5" fill="rgba(0,229,255,0.25)"/><rect x="6" y="36" width="8" height="3" rx="1" fill="#0ff0c0" opacity="0.6"><animate attributeName="opacity" values="0.6;0.1;0.6" dur="0.9s" repeatCount="indefinite"/></rect></svg>
+      </div>
+      <!-- DJ Booth -->
+      <div class="room-el" style="top:14%;left:50%;transform:translateX(-50%)">
+        <svg width="100" height="58" viewBox="0 0 100 58" fill="none">
+          <defs><filter id="djf"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+          <rect x="5" y="20" width="90" height="33" rx="3" fill="#061e2e" stroke="#00e5ff" stroke-width="1.5" filter="url(#djf)"/>
+          <circle cx="27" cy="37" r="11" fill="#030b14" stroke="#00e5ff" stroke-width="1"/><circle cx="27" cy="37" r="7" fill="rgba(0,229,255,0.13)" stroke="#00e5ff" stroke-width="0.5"/><circle cx="27" cy="37" r="2.5" fill="#00e5ff"/>
+          <circle cx="73" cy="37" r="11" fill="#030b14" stroke="#00e5ff" stroke-width="1"/><circle cx="73" cy="37" r="7" fill="rgba(0,229,255,0.13)" stroke="#00e5ff" stroke-width="0.5"/><circle cx="73" cy="37" r="2.5" fill="#00e5ff"/>
+          <rect x="40" y="24" width="20" height="16" rx="1" fill="#030b14" stroke="#0ff0c0" stroke-width="1"/>
+          <circle cx="43" cy="31" r="2" fill="#0ff0c0" opacity="0.9"/><circle cx="48" cy="31" r="2" fill="#0ff0c0" opacity="0.9"/><circle cx="53" cy="31" r="2" fill="#0ff0c0" opacity="0.9"/><circle cx="58" cy="31" r="2" fill="#0ff0c0" opacity="0.9"/>
+          <rect x="41" y="36" width="18" height="2" rx="1" fill="#0ff0c0" opacity="0.5"/>
+          <line x1="46" y1="14" x2="46" y2="6" stroke="#0ff0c0" stroke-width="1.2" opacity="0.7"><animate attributeName="y2" values="6;14;6" dur="0.5s" repeatCount="indefinite"/></line>
+          <line x1="50" y1="14" x2="50" y2="10" stroke="#0ff0c0" stroke-width="1.2" opacity="0.7"><animate attributeName="y2" values="8;14;8" dur="0.7s" repeatCount="indefinite"/></line>
+          <line x1="54" y1="14" x2="54" y2="8" stroke="#0ff0c0" stroke-width="1.2" opacity="0.7"><animate attributeName="y2" values="10;14;10" dur="0.6s" repeatCount="indefinite"/></line>
+          <rect x="15" y="47" width="7" height="3" rx="1" fill="#00e5ff" opacity="0.7"><animate attributeName="opacity" values="0.7;0.2;0.7" dur="0.53s" repeatCount="indefinite"/></rect>
+          <rect x="24" y="47" width="7" height="3" rx="1" fill="#00e5ff" opacity="0.7"><animate attributeName="opacity" values="0.7;0.2;0.7" dur="0.6s" repeatCount="indefinite"/></rect>
+          <rect x="34" y="47" width="7" height="3" rx="1" fill="#00e5ff" opacity="0.7"><animate attributeName="opacity" values="0.7;0.2;0.7" dur="0.69s" repeatCount="indefinite"/></rect>
+          <rect x="56" y="47" width="7" height="3" rx="1" fill="#0ff0c0" opacity="0.7"><animate attributeName="opacity" values="0.7;0.2;0.7" dur="0.73s" repeatCount="indefinite"/></rect>
+          <rect x="66" y="47" width="7" height="3" rx="1" fill="#0ff0c0" opacity="0.7"><animate attributeName="opacity" values="0.7;0.2;0.7" dur="0.8s" repeatCount="indefinite"/></rect>
+          <rect x="76" y="47" width="7" height="3" rx="1" fill="#0ff0c0" opacity="0.7"><animate attributeName="opacity" values="0.7;0.2;0.7" dur="0.87s" repeatCount="indefinite"/></rect>
+        </svg>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:7px;color:#0ff0c0;letter-spacing:0.15em;text-align:center;margin-top:3px">soundsbyalissa</div>
+      </div>
+      <!-- DJ Alissa character -->
+      <div class="room-el" id="dj-char" style="top:2%;left:48%;transform:translateX(-50%)"></div>
+      <!-- Cars -->
+      <div class="room-el" style="top:6%;left:8%"><svg width="28" height="50" viewBox="0 0 50 90" fill="none" style="filter:drop-shadow(0 0 6px rgba(0,229,255,0.5));transform:rotate(10deg)"><defs><radialGradient id="cg1" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#00e5ff" stop-opacity="0.3"/><stop offset="100%" stop-color="#00e5ff" stop-opacity="0.05"/></radialGradient></defs><path d="M10 75 Q8 50 10 25 Q14 8 25 5 Q36 8 40 25 Q42 50 40 75 Q36 85 25 86 Q14 85 10 75Z" fill="url(#cg1)" stroke="#00e5ff" stroke-width="1.5"/><path d="M14 32 Q25 26 36 32 L34 50 Q25 46 16 50Z" fill="#00e5ff" opacity="0.15" stroke="#00e5ff" stroke-width="0.8"/><ellipse cx="16" cy="18" rx="4" ry="2.5" fill="#00e5ff" opacity="0.8"/><ellipse cx="34" cy="18" rx="4" ry="2.5" fill="#00e5ff" opacity="0.8"/><ellipse cx="15" cy="78" rx="4" ry="2" fill="#ff4466" opacity="0.7"/><ellipse cx="35" cy="78" rx="4" ry="2" fill="#ff4466" opacity="0.7"/><ellipse cx="8" cy="30" rx="4" ry="6" fill="#030b14" stroke="#00e5ff" stroke-width="1"/><ellipse cx="42" cy="30" rx="4" ry="6" fill="#030b14" stroke="#00e5ff" stroke-width="1"/><ellipse cx="8" cy="65" rx="4" ry="6" fill="#030b14" stroke="#00e5ff" stroke-width="1"/><ellipse cx="42" cy="65" rx="4" ry="6" fill="#030b14" stroke="#00e5ff" stroke-width="1"/></svg></div>
+      <div class="room-el" style="top:4%;right:8%"><svg width="28" height="50" viewBox="0 0 50 90" fill="none" style="filter:drop-shadow(0 0 6px rgba(15,240,192,0.5));transform:rotate(-10deg)"><defs><radialGradient id="cg2" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#0ff0c0" stop-opacity="0.3"/><stop offset="100%" stop-color="#0ff0c0" stop-opacity="0.05"/></radialGradient></defs><path d="M10 75 Q8 50 10 25 Q14 8 25 5 Q36 8 40 25 Q42 50 40 75 Q36 85 25 86 Q14 85 10 75Z" fill="url(#cg2)" stroke="#0ff0c0" stroke-width="1.5"/><path d="M14 32 Q25 26 36 32 L34 50 Q25 46 16 50Z" fill="#0ff0c0" opacity="0.15" stroke="#0ff0c0" stroke-width="0.8"/><ellipse cx="16" cy="18" rx="4" ry="2.5" fill="#0ff0c0" opacity="0.8"/><ellipse cx="34" cy="18" rx="4" ry="2.5" fill="#0ff0c0" opacity="0.8"/><ellipse cx="15" cy="78" rx="4" ry="2" fill="#ff4466" opacity="0.7"/><ellipse cx="35" cy="78" rx="4" ry="2" fill="#ff4466" opacity="0.7"/><ellipse cx="8" cy="30" rx="4" ry="6" fill="#030b14" stroke="#0ff0c0" stroke-width="1"/><ellipse cx="42" cy="30" rx="4" ry="6" fill="#030b14" stroke="#0ff0c0" stroke-width="1"/><ellipse cx="8" cy="65" rx="4" ry="6" fill="#030b14" stroke="#0ff0c0" stroke-width="1"/><ellipse cx="42" cy="65" rx="4" ry="6" fill="#030b14" stroke="#0ff0c0" stroke-width="1"/></svg></div>
+      <div class="room-el" style="top:8%;left:17%;opacity:0.7"><svg width="22" height="40" viewBox="0 0 50 90" fill="none" style="filter:drop-shadow(0 0 5px rgba(0,170,255,0.5));transform:rotate(5deg)"><defs><radialGradient id="cg3" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#00aaff" stop-opacity="0.3"/><stop offset="100%" stop-color="#00aaff" stop-opacity="0.05"/></radialGradient></defs><path d="M10 75 Q8 50 10 25 Q14 8 25 5 Q36 8 40 25 Q42 50 40 75 Q36 85 25 86 Q14 85 10 75Z" fill="url(#cg3)" stroke="#00aaff" stroke-width="1.5"/><ellipse cx="8" cy="30" rx="4" ry="6" fill="#030b14" stroke="#00aaff" stroke-width="1"/><ellipse cx="42" cy="30" rx="4" ry="6" fill="#030b14" stroke="#00aaff" stroke-width="1"/><ellipse cx="8" cy="65" rx="4" ry="6" fill="#030b14" stroke="#00aaff" stroke-width="1"/><ellipse cx="42" cy="65" rx="4" ry="6" fill="#030b14" stroke="#00aaff" stroke-width="1"/></svg></div>
+      <div class="room-el" style="top:6%;right:17%;opacity:0.7"><svg width="22" height="40" viewBox="0 0 50 90" fill="none" style="filter:drop-shadow(0 0 5px rgba(64,255,221,0.5));transform:rotate(-5deg)"><defs><radialGradient id="cg4" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#40ffdd" stop-opacity="0.3"/><stop offset="100%" stop-color="#40ffdd" stop-opacity="0.05"/></radialGradient></defs><path d="M10 75 Q8 50 10 25 Q14 8 25 5 Q36 8 40 25 Q42 50 40 75 Q36 85 25 86 Q14 85 10 75Z" fill="url(#cg4)" stroke="#40ffdd" stroke-width="1.5"/><ellipse cx="8" cy="30" rx="4" ry="6" fill="#030b14" stroke="#40ffdd" stroke-width="1"/><ellipse cx="42" cy="30" rx="4" ry="6" fill="#030b14" stroke="#40ffdd" stroke-width="1"/><ellipse cx="8" cy="65" rx="4" ry="6" fill="#030b14" stroke="#40ffdd" stroke-width="1"/><ellipse cx="42" cy="65" rx="4" ry="6" fill="#030b14" stroke="#40ffdd" stroke-width="1"/></svg></div>
+      <!-- Bar table -->
+      <div class="room-el" style="top:41%;left:2%">
+        <svg width="75" height="32" viewBox="0 0 75 32" fill="none"><rect x="2" y="9" width="71" height="19" rx="2" fill="#061e2e" stroke="rgba(0,229,255,0.25)" stroke-width="1"/><rect x="2" y="6" width="71" height="5" rx="1" fill="#0a2030" stroke="#00e5ff" stroke-width="1"/><circle cx="10" cy="9" r="2" fill="#00e5ff" opacity="0.5"/><circle cx="22" cy="9" r="2" fill="#00e5ff" opacity="0.5"/><circle cx="34" cy="9" r="2" fill="#00e5ff" opacity="0.5"/><circle cx="46" cy="9" r="2" fill="#00e5ff" opacity="0.5"/><circle cx="58" cy="9" r="2" fill="#00e5ff" opacity="0.5"/><circle cx="68" cy="9" r="2" fill="#00e5ff" opacity="0.5"/></svg>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:7px;color:#00e5ff;letter-spacing:0.1em;text-align:center;margin-top:3px">BAR</div>
+      </div>
+      <!-- Terrelle behind food booth -->
+      <div class="room-el" style="top:26%;right:6%"><div id="char-terrelle"></div></div>
+      <!-- Noori behind food booth -->
+      <div class="room-el" style="top:26%;right:0%"><div id="char-noori"></div></div>
+      <!-- Food booth in front -->
+      <div class="room-el" style="top:41%;right:2%;z-index:3">
+        <svg width="75" height="32" viewBox="0 0 75 32" fill="none"><rect x="2" y="9" width="71" height="19" rx="2" fill="#061e2e" stroke="rgba(15,240,192,0.25)" stroke-width="1"/><rect x="2" y="6" width="71" height="5" rx="1" fill="#0a2030" stroke="#0ff0c0" stroke-width="1"/><circle cx="10" cy="9" r="2" fill="#0ff0c0" opacity="0.5"/><circle cx="22" cy="9" r="2" fill="#0ff0c0" opacity="0.5"/><circle cx="34" cy="9" r="2" fill="#0ff0c0" opacity="0.5"/><circle cx="46" cy="9" r="2" fill="#0ff0c0" opacity="0.5"/><circle cx="58" cy="9" r="2" fill="#0ff0c0" opacity="0.5"/><circle cx="68" cy="9" r="2" fill="#0ff0c0" opacity="0.5"/></svg>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:7px;color:#0ff0c0;letter-spacing:0.1em;text-align:center;margin-top:3px">Let 'Em Cook</div>
+      </div>
+      <!-- Guest characters -->
+      <div id="room-guests"></div>
+    </div>
+  </div>
+
+  <div class="guest-list-wrap">
+    <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--cyan);letter-spacing:0.2em;margin-bottom:8px" id="guest-list-title">// ATTENDEE LIST</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px" id="guest-list-items"></div>
+  </div>
+  <div class="room-footer" id="room-footer" onclick="handleFooterTap()">
+    STEM SOCIAL × STEAM CIRCUIT  //  PORSCHE STUDIO  //  1432 NW JOHNSON ST, PDX
+  </div>
+</div>
+
+<!-- ADMIN LOGIN -->
+<div id="screen-admin-login" class="screen">
+  <div class="orb" style="width:500px;height:500px;background:radial-gradient(circle,rgba(0,229,255,0.15) 0%,transparent 70%);top:-150px;left:-150px"></div>
+  <div class="admin-login-card">
+    <div style="font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;color:var(--white);letter-spacing:0.15em;margin-bottom:6px">ADMIN ACCESS</div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--cyan);letter-spacing:0.2em;margin-bottom:28px">SILICON FOREST: AFTER DARK</div>
+    <div class="field">
+      <label class="field-label">// PASSWORD</label>
+      <div class="field-wrap"><input type="password" id="admin-pw" placeholder="Enter password" onkeydown="if(event.key==='Enter')checkAdminPw()"/><div class="underline"></div></div>
+    </div>
+    <div class="admin-login-err" id="admin-err">INCORRECT PASSWORD</div>
+    <div style="display:flex;gap:10px">
+      <button class="btn-secondary" onclick="showScreen('entry')">CANCEL</button>
+      <button class="btn-primary" style="flex:2" onclick="checkAdminPw()">ENTER</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="screen-admin" class="screen">
+  <div class="orb" style="width:500px;height:500px;background:radial-gradient(circle,rgba(0,229,255,0.12) 0%,transparent 70%);top:-150px;left:-150px;filter:blur(80px)"></div>
+  <div class="admin-inner">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px">
+      <div>
+        <div style="font-family:'Orbitron',sans-serif;font-size:20px;font-weight:900;color:var(--white);letter-spacing:0.1em">ADMIN PANEL</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--cyan);letter-spacing:0.2em;margin-top:4px">SILICON FOREST: AFTER DARK</div>
+      </div>
+      <button class="btn-secondary" onclick="showScreen('entry')">← EXIT</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:22px">
+      <div class="admin-stat"><div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--cyan);letter-spacing:0.2em;margin-bottom:6px">TOTAL RSVPs</div><div style="font-family:'Orbitron',sans-serif;font-size:30px;font-weight:700;color:var(--white)" id="stat-total">—</div></div>
+      <div class="admin-stat"><div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--cyan);letter-spacing:0.2em;margin-bottom:6px">CONFIRMED</div><div style="font-family:'Orbitron',sans-serif;font-size:30px;font-weight:700;color:var(--white)" id="stat-confirmed">—</div></div>
+    </div>
+    <div class="admin-box">
+      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--cyan);letter-spacing:0.2em;margin-bottom:12px">// RSVP LIST</div>
+      <div class="admin-list" id="admin-rsvp-list"></div>
+    </div>
+    <div class="admin-box">
+      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--cyan);letter-spacing:0.2em;margin-bottom:16px">// SEND MASS EMAIL — <span id="admin-recipient-count">0</span> RECIPIENTS</div>
+      <div class="field">
+        <label class="field-label">SUBJECT</label>
+        <div class="field-wrap"><input type="text" id="admin-subject" value="Reminder: Silicon Forest: After Dark — Mar 14"/><div class="underline"></div></div>
+      </div>
+      <div class="field" style="margin-bottom:14px">
+        <label class="field-label">MESSAGE</label>
+        <textarea class="admin-textarea" id="admin-message" placeholder="Write your message to attendees..."></textarea>
+      </div>
+      <button class="btn-primary" id="admin-send-btn" onclick="handleMassSend()">SEND TO ALL GUESTS</button>
+    </div>
+    <div class="admin-results" id="admin-results" style="display:none">
+      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--elec);letter-spacing:0.2em;margin-bottom:10px">// RESULTS</div>
+      <div id="admin-results-list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────
+const API      = "https://script.google.com/macros/s/AKfycbxxhxpZQqaWJlA-bpPeyze30ufsoyjrt7CpBrgi85PtXFzLVTVWPVJSMiRbzEcpQ_fp/exec";
+const SVC      = "service_h3cdbzs";
+const TPL      = "template_04gzh34";
+const ADMIN_PW = "sfad2026";
+
+const SEEDS = ["Yoseph","Ashleigh","Mony","Ebe","Charlene","Hillary"];
+
+const GPOS = [
+  {x:20,y:60},{x:33,y:65},{x:46,y:60},{x:59,y:65},{x:72,y:60},
+  {x:26,y:75},{x:40,y:72},{x:54,y:75},{x:66,y:72},
+  {x:18,y:83},{x:32,y:80},{x:46,y:83},{x:60,y:80},{x:74,y:83},
+  {x:24,y:91},{x:40,y:89},{x:56,y:91},{x:70,y:89},
+];
+
+const GCOLS = [
+  "#00e5ff","#40ffdd","#00aaff","#33ffee","#00ddff","#55ffcc",
+  "#0099ee","#22ffbb","#00ccee","#44ffcc","#0088dd","#33eebb",
+];
+
+// ─── STATE ────────────────────────────────────────────────────
+let guests   = [];
+let myName   = "";
+let myEmail  = "";
+let tapCount = 0;
+let tapTimer = null;
+
+// ─── API CALLS ────────────────────────────────────────────────
+async function apiGet(params) {
+  const url = API + "?" + new URLSearchParams(params).toString();
+  const r = await fetch(url);
+  return r.json();
+}
+
+async function fetchGuests() {
+  const data = await apiGet({ action: "getGuests" });
+  if (data.ok) {
+    // Merge seeds in display order but mark them as seed
+    const fromSheet = data.guests.map(g => g.name);
+    const seedsNotInSheet = SEEDS.filter(s => !fromSheet.find(n => n.toLowerCase() === s.toLowerCase()));
+    return [...data.guests, ...seedsNotInSheet.map(n => ({ name: n, email: "", confirmed: false }))];
+  }
+  return SEEDS.map(n => ({ name: n, email: "", confirmed: false }));
+}
+
+// ─── CHARACTER SVG ────────────────────────────────────────────
+function makeChar(name, color, size, isNew, role) {
+  const id = 'c' + (name + color).replace(/\W/g, '');
+  const label = (role || name).substring(0, 9);
+  const w = size, h = Math.round(size * 1.35);
+  return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+    <div style="font-family:'Share Tech Mono',monospace;font-size:${role?8:7}px;color:${role?color:'#e8f8ff'};background:rgba(3,11,20,0.9);border:1px solid ${color}55;padding:2px 6px;white-space:nowrap;max-width:70px;overflow:hidden;text-overflow:ellipsis;letter-spacing:0.06em;text-transform:uppercase;animation:nf 3s ease-in-out infinite">${label}</div>
+    <svg width="${w}" height="${h}" viewBox="0 0 48 65" fill="none">
+      <defs>
+        <filter id="${id}f"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <radialGradient id="${id}g" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="${color}" stop-opacity="0.3"/><stop offset="100%" stop-color="${color}" stop-opacity="0.05"/></radialGradient>
+      </defs>
+      <ellipse cx="24" cy="14" rx="12" ry="13" fill="url(#${id}g)" stroke="${color}" stroke-width="1.5" filter="url(#${id}f)"/>
+      <ellipse cx="19" cy="13" rx="3" ry="3.5" fill="${color}" opacity="0.9"/>
+      <ellipse cx="29" cy="13" rx="3" ry="3.5" fill="${color}" opacity="0.9"/>
+      <circle cx="20" cy="11.5" r="1" fill="white" opacity="0.7"/>
+      <circle cx="30" cy="11.5" r="1" fill="white" opacity="0.7"/>
+      <path d="M19 19 Q24 23 29 19" stroke="${color}" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+      <ellipse cx="14" cy="16" rx="4" ry="2.5" fill="${color}" opacity="0.2"/>
+      <ellipse cx="34" cy="16" rx="4" ry="2.5" fill="${color}" opacity="0.2"/>
+      <ellipse cx="24" cy="39" rx="13" ry="14" fill="url(#${id}g)" stroke="${color}" stroke-width="1.5"/>
+      <circle cx="24" cy="40" r="2" fill="${color}" opacity="0.3"/>
+      <ellipse cx="9" cy="36" rx="5" ry="3.5" fill="url(#${id}g)" stroke="${color}" stroke-width="1.2" transform="rotate(-20 9 36)"/>
+      <ellipse cx="39" cy="36" rx="5" ry="3.5" fill="url(#${id}g)" stroke="${color}" stroke-width="1.2" transform="rotate(20 39 36)"/>
+      <ellipse cx="19" cy="56" rx="5" ry="6" fill="url(#${id}g)" stroke="${color}" stroke-width="1.2"/>
+      <ellipse cx="29" cy="56" rx="5" ry="6" fill="url(#${id}g)" stroke="${color}" stroke-width="1.2"/>
+      <ellipse cx="18" cy="62" rx="6" ry="2.5" fill="${color}" opacity="0.5"/>
+      <ellipse cx="30" cy="62" rx="6" ry="2.5" fill="${color}" opacity="0.5"/>
+      ${isNew ? `<circle cx="24" cy="32" r="24" fill="none" stroke="${color}" stroke-width="0.8" opacity="0.5"><animate attributeName="r" values="24;34;24" dur="2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.5;0;0.5" dur="2s" repeatCount="indefinite"/></circle>` : ''}
+    </svg>
+  </div>`;
+}
+
+// ─── RENDER ───────────────────────────────────────────────────
+function renderRoom() {
+  // DJ
+  document.getElementById('dj-char').innerHTML = makeChar('Alissa','#0ff0c0',28,false,'soundsbyalissa');
+  // Terrelle & Noori
+  document.getElementById('char-terrelle').innerHTML = makeChar('TERRELLE','#ffaa00',22,false,null);
+  document.getElementById('char-noori').innerHTML    = makeChar('NOORI','#ff6eb4',22,false,null);
+
+  // Guests
+  const container = document.getElementById('room-guests');
+  container.innerHTML = '';
+  guests.slice(0, GPOS.length).forEach((g, i) => {
+    const pos  = GPOS[i];
+    const isMe = g.name.toLowerCase() === myName.toLowerCase();
+    const col  = isMe ? '#0ff0c0' : GCOLS[i % GCOLS.length];
+    const size = isMe ? 28 : 22;
+    const dur  = (3 + (i * 0.37) % 2.5).toFixed(1);
+    const del  = ((i * 0.6) % 3).toFixed(1);
+    const anim = isMe
+      ? 'popIn 0.7s cubic-bezier(0.34,1.56,0.64,1) forwards'
+      : `w${i%4} ${dur}s ease-in-out ${del}s infinite`;
+    const el = document.createElement('div');
+    el.style.cssText = `position:absolute;left:${pos.x}%;bottom:${100-pos.y}%;transform:translateX(-50%);z-index:${isMe?4:1};animation:${anim}`;
+    el.innerHTML = makeChar(g.name.toUpperCase(), col, size, isMe, null);
+    container.appendChild(el);
+  });
+
+  // Guest chips
+  const listEl = document.getElementById('guest-list-items');
+  listEl.innerHTML = '';
+  guests.forEach(g => {
+    const chip = document.createElement('div');
+    chip.className = 'guest-chip' + (g.name.toLowerCase() === myName.toLowerCase() ? ' me' : '');
+    chip.textContent = g.name.toUpperCase();
+    listEl.appendChild(chip);
+  });
+
+  document.getElementById('guest-list-title').textContent = `// ATTENDEE LIST — ${guests.length} CONFIRMED`;
+  document.getElementById('room-count').textContent = `${guests.length} ATTENDING`;
+}
+
+// ─── ENTRY VALIDATION ─────────────────────────────────────────
+document.getElementById('entry-name').addEventListener('input', validateEntry);
+document.getElementById('entry-email').addEventListener('input', validateEntry);
+document.getElementById('entry-email').addEventListener('keydown', e => { if(e.key==='Enter') handleEnter(); });
+
+function validateEntry() {
+  const name  = document.getElementById('entry-name').value.trim();
+  const email = document.getElementById('entry-email').value.trim();
+  const valid = name.length > 0 && email.includes('@') && email.includes('.');
+  document.getElementById('entry-btn').disabled = !valid;
+  document.getElementById('entry-err').style.display = 'none';
+}
+
+// ─── ENTER ROOM ───────────────────────────────────────────────
+async function handleEnter() {
+  const name  = document.getElementById('entry-name').value.trim();
+  const email = document.getElementById('entry-email').value.trim();
+  if (!name || !email.includes('@')) return;
+
+  const btn = document.getElementById('entry-btn');
+  const errEl = document.getElementById('entry-err');
+  btn.disabled = true;
+  document.getElementById('entry-btn-text').textContent = 'CHECKING...';
+  errEl.style.display = 'none';
+
+  try {
+    // Check if this name+email combo exists
+    const check = await apiGet({ action: "checkGuest", name, email });
+
+    if (check.exists) {
+      // Returning guest — welcome back, go straight to room
+      myName  = check.guest.name;
+      myEmail = email;
+      enterRoom(true);
+    } else {
+      // New guest — add to sheet
+      const add = await apiGet({ action: "addGuest", name, email });
+      if (add.ok) {
+        myName  = name;
+        myEmail = email;
+        if (!add.existing) {
+          // Freshly added — refresh guest list
+          guests = await fetchGuests();
+        }
+        enterRoom(false);
+      } else if (add.error === "name_taken") {
+        errEl.textContent = "THAT NAME IS TAKEN — CHECK YOUR EMAIL ADDRESS";
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        document.getElementById('entry-btn-text').textContent = 'ENTER THE ROOM →';
+      }
+    }
+  } catch(e) {
+    console.error(e);
+    errEl.textContent = "CONNECTION ERROR — PLEASE TRY AGAIN";
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    document.getElementById('entry-btn-text').textContent = 'ENTER THE ROOM →';
+  }
+}
+
+function enterRoom(returning) {
+  document.getElementById('room-myname').textContent = myName.toUpperCase();
+  document.getElementById('confirm-hint').textContent = `Sends confirmation to ${myEmail}`;
+
+  // If returning, show already confirmed message instead of button
+  if (returning) {
+    document.getElementById('confirm-area').innerHTML =
+      '<div class="confirm-status sent">✓ WELCOME BACK, ' + myName.toUpperCase() + '!</div>';
+  } else {
+    document.getElementById('confirm-area').innerHTML =
+      '<button class="btn-confirm" onclick="handleConfirm()">✉  CONFIRM MY RSVP</button>' +
+      '<div style="font-family:\'Share Tech Mono\',monospace;font-size:8px;color:var(--muted);letter-spacing:0.1em;margin-top:6px">Sends confirmation to ' + myEmail + '</div>';
+  }
+
+  renderRoom();
+  showScreen('room');
+}
+
+// ─── CONFIRM EMAIL ────────────────────────────────────────────
+async function handleConfirm() {
+  const area = document.getElementById('confirm-area');
+  area.innerHTML = '<div class="confirm-status sending">SENDING...</div>';
+
+  try {
+    // Load EmailJS if not already
+    if (!window.emailjs) {
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    }
+    window.emailjs.init("algUVVBdkBx6pGuGK");
+
+    await window.emailjs.send(SVC, TPL, {
+      to_name:    myName,
+      to_email:   myEmail,
+      event_name: "Silicon Forest: After Dark",
+      event_date: "Saturday, March 14, 2026",
+      event_time: "6:00 PM – 9:00 PM",
+      venue_name: "Porsche Studio",
+      venue_addr: "1432 NW Johnson St, Portland, OR",
+      dj:         "soundsbyalissa",
+      food:       "Let 'Em Cook burger pop-up",
+      rsvp_link:  "https://luma.com/n600zgyn",
+      hosts:      "STEM Social × STEAM Circuit",
+    });
+
+    // Mark confirmed in sheet
+    await apiGet({ action: "confirmGuest", email: myEmail });
+
+    area.innerHTML = '<div class="confirm-status sent">✓  YOU\'RE CONFIRMED! CHECK YOUR EMAIL.</div>';
+  } catch(e) {
+    console.error('Email error:', e);
+    const msg = (e && e.text) ? e.text : 'unknown error';
+    area.innerHTML =
+      '<div class="confirm-status error">⚠ EMAIL FAILED: ' + msg + '</div>' +
+      '<div style="margin-top:8px"><button class="btn-secondary" onclick="handleConfirm()">RETRY</button></div>';
+  }
+}
+
+// ─── SCREEN ROUTING ───────────────────────────────────────────
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+}
+
+// ─── FOOTER TAP (admin) ───────────────────────────────────────
+function handleFooterTap() {
+  tapCount++;
+  if (tapTimer) clearTimeout(tapTimer);
+  if (tapCount >= 3) {
+    tapCount = 0;
+    document.getElementById('admin-pw').value = '';
+    document.getElementById('admin-err').style.display = 'none';
+    showScreen('admin-login');
+  } else {
+    tapTimer = setTimeout(() => { tapCount = 0; }, 2000);
+  }
+}
+
+// ─── ADMIN ────────────────────────────────────────────────────
+function checkAdminPw() {
+  if (document.getElementById('admin-pw').value === ADMIN_PW) {
+    renderAdmin();
+    showScreen('admin');
+  } else {
+    const err = document.getElementById('admin-err');
+    err.style.display = 'block';
+    document.getElementById('admin-pw').value = '';
+    setTimeout(() => { err.style.display = 'none'; }, 2000);
+  }
+}
+
+function renderAdmin() {
+  const withEmail = guests.filter(g => g.email);
+  const confirmed = guests.filter(g => g.confirmed);
+  document.getElementById('stat-total').textContent     = guests.length;
+  document.getElementById('stat-confirmed').textContent = confirmed.length;
+  document.getElementById('admin-recipient-count').textContent = withEmail.length;
+  document.getElementById('admin-send-btn').textContent = `SEND TO ALL ${withEmail.length} GUESTS`;
+
+  const list = document.getElementById('admin-rsvp-list');
+  list.innerHTML = '';
+  guests.forEach((g, i) => {
+    list.innerHTML += `<div class="admin-list-row"><span style="color:var(--white)">${i+1}. ${g.name.toUpperCase()}</span><span style="color:var(--muted)">${g.email || '—'}</span></div>`;
+  });
+
+  document.getElementById('admin-results').style.display = 'none';
+}
+
+async function handleMassSend() {
+  const subject = document.getElementById('admin-subject').value.trim();
+  const message = document.getElementById('admin-message').value.trim();
+  if (!message) return;
+
+  const withEmail = guests.filter(g => g.email);
+  const btn = document.getElementById('admin-send-btn');
+  btn.disabled = true;
+  btn.textContent = 'SENDING...';
+
+  if (!window.emailjs) {
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+  window.emailjs.init("algUVVBdkBx6pGuGK");
+
+  const results = [];
+  for (const g of withEmail) {
+    try {
+      await window.emailjs.send(SVC, TPL, {
+        to_name: g.name, to_email: g.email,
+        event_name:"Silicon Forest: After Dark",event_date:"Saturday, March 14, 2026",
+        event_time:"6:00 PM – 9:00 PM",venue_name:"Porsche Studio",
+        venue_addr:"1432 NW Johnson St, Portland, OR",dj:"soundsbyalissa",
+        food:"Let 'Em Cook burger pop-up",rsvp_link:"https://luma.com/n600zgyn",
+        hosts:"STEM Social × STEAM Circuit",
+        custom_subject: subject, custom_message: message,
+      });
+      results.push({ name: g.name, ok: true });
+    } catch(e) {
+      results.push({ name: g.name, ok: false });
+    }
+  }
+
+  btn.disabled = false;
+  btn.textContent = `SEND TO ALL ${withEmail.length} GUESTS`;
+
+  const resEl = document.getElementById('admin-results');
+  document.getElementById('admin-results-list').innerHTML = results.map(r =>
+    `<div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:${r.ok?'var(--elec)':'#ff4466'};letter-spacing:0.1em;margin-bottom:5px">${r.ok?'✓':'✗'} ${r.name.toUpperCase()}</div>`
+  ).join('');
+  resEl.style.display = 'block';
+}
+
+// ─── INIT ─────────────────────────────────────────────────────
+(async function init() {
+  showScreen('loading');
+  try {
+    guests = await fetchGuests();
+  } catch(e) {
+    guests = SEEDS.map(n => ({ name: n, email: "", confirmed: false }));
+  }
+  const count = guests.length;
+  document.getElementById('entry-count').textContent = `${count} PEOPLE ALREADY IN THE ROOM`;
+  showScreen('entry');
+})();
+</script>
+</body>
+</html>
